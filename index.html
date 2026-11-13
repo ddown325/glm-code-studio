@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLM Code Studio — AI game builder</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0b0e14; --panel:#11151f; --panel2:#151b29; --panel3:#1a2233;
+  --border:#232a3b; --border2:#2e3850;
+  --text:#e6e9f0; --dim:#8b93a7; --faint:#5b6478;
+  --acc:#7c5cff; --acc2:#22d3ee; --ok:#34d399; --warn:#fbbf24; --err:#f87171;
+  --mono:ui-monospace,'Cascadia Code','JetBrains Mono',Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,Inter,sans-serif;
+  --rad:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;display:flex;flex-direction:column;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(600px 300px at 15% -5%,rgba(124,92,255,.14),transparent 60%),
+             radial-gradient(700px 350px at 95% 110%,rgba(34,211,238,.10),transparent 60%)}
+header,main,footer{position:relative;z-index:1}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;font-size:13px}
+input,select,textarea{font-family:inherit;font-size:13px;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:8px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--acc)}
+select{padding:6px 8px}
+option{background:var(--panel2)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#2a3247;border-radius:9px;border:2px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- header ---------- */
+header{display:flex;align-items:center;gap:12px;height:52px;padding:0 14px;background:rgba(17,21,31,.85);border-bottom:1px solid var(--border);backdrop-filter:blur(8px)}
+.logo{font-weight:800;font-size:15px;letter-spacing:.2px;background:linear-gradient(90deg,#a78bfa,#22d3ee);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+.logo .zap{font-size:16px}
+.hspace{flex:1}
+.model-wrap{display:flex;align-items:center;gap:6px}
+.model-wrap label{color:var(--dim);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--err);box-shadow:0 0 6px currentColor}
+.dot.ok{background:var(--ok)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--panel3);color:var(--text);font-weight:600;transition:.15s;white-space:nowrap}
+.btn:hover{border-color:var(--acc);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn.primary{background:linear-gradient(135deg,var(--acc),#5b8cff);border-color:transparent;color:#fff}
+.btn.primary:hover{filter:brightness(1.12)}
+.btn.ghost{background:transparent;border-color:var(--border)}
+.btn.small{padding:4px 9px;font-size:12px;border-radius:7px}
+.btn.danger{border-color:#7f2630;background:#3a1b22;color:#fca5a5}
+
+/* ---------- layout ---------- */
+main{flex:1;display:flex;min-height:0}
+.chat{width:432px;min-width:340px;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--border)}
+.workspace{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+
+/* ---------- chat ---------- */
+.chat-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)}
+.chat-head .title{font-weight:700}
+.chat-head .sub{color:var(--dim);font-size:11px;margin-left:auto;text-align:right;line-height:1.3}
+.switch{position:relative;display:inline-flex;align-items:center;gap:7px;cursor:pointer;color:var(--dim);font-size:12px;font-weight:600;user-select:none}
+.switch input{position:absolute;opacity:0;pointer-events:none}
+.switch .track{width:34px;height:19px;border-radius:20px;background:#2a3247;position:relative;transition:.2s;flex:none}
+.switch .track::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#aab2c5;transition:.2s}
+.switch input:checked + .track{background:linear-gradient(90deg,var(--acc),#5b8cff)}
+.switch input:checked + .track::after{left:17px;background:#fff}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:9px 12px;border-bottom:1px solid var(--border)}
+.chip{padding:5px 10px;border-radius:20px;border:1px solid var(--border2);color:var(--dim);font-size:12px;transition:.15s;background:var(--panel2)}
+.chip:hover{color:#fff;border-color:var(--acc2);background:rgba(34,211,238,.08)}
+.messages{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:100%;line-height:1.55;word-wrap:break-word}
+.msg .who{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:4px;color:var(--faint)}
+.msg.user .who{color:#b7a6ff}
+.msg.assistant .who{color:var(--acc2)}
+.msg .body{padding:10px 12px;border-radius:12px;font-size:13.5px}
+.msg.user .body{background:linear-gradient(135deg,rgba(124,92,255,.22),rgba(91,140,255,.16));border:1px solid rgba(124,92,255,.35);border-top-left-radius:4px}
+.msg.assistant .body{background:var(--panel2);border:1px solid var(--border);border-top-left-radius:4px}
+.msg .body p{margin:0 0 8px}
+.msg .body p:last-child{margin-bottom:0}
+.msg .body ul,.msg .body ol{margin:4px 0 8px 20px}
+.msg .body li{margin:2px 0}
+.msg .body code{font-family:var(--mono);font-size:12px;background:#0d1117;border:1px solid var(--border);padding:1px 5px;border-radius:5px;color:#a5d6ff}
+.msg .foot{display:flex;gap:10px;align-items:center;margin-top:6px;font-size:11px;color:var(--faint)}
+.streaming-cursor{display:inline-block;width:8px;height:14px;background:var(--acc2);vertical-align:-2px;margin-left:2px;animation:blink 1s steps(2) infinite;border-radius:2px}
+@keyframes blink{50%{opacity:0}}
+.msg.assistant .body.streaming{white-space:pre-wrap;font-family:var(--mono);font-size:12.5px;color:#cdd6ea}
+.badge-ok{display:inline-flex;align-items:center;gap:4px;color:var(--ok);font-weight:700;font-size:11.5px}
+
+/* code card inside a message */
+.codecard{margin:8px 0;border:1px solid var(--border2);border-radius:10px;overflow:hidden;background:#0d1117}
+.codecard .bar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--panel3);border-bottom:1px solid var(--border)}
+.codecard .bar .lang{font-family:var(--mono);font-size:11px;color:var(--acc2);font-weight:700}
+.codecard .bar .len{font-size:11px;color:var(--faint)}
+.codecard .bar .grow{flex:1}
+.codecard pre{max-height:260px;overflow:auto;padding:10px 12px;font-family:var(--mono);font-size:11.5px;line-height:1.5;color:#c9d4ea;white-space:pre}
+.codecard.applied{border-color:rgba(52,211,153,.55)}
+
+/* agent steps */
+.agent-step{border:1px dashed var(--border2);border-radius:10px;margin:8px 0;overflow:hidden}
+.agent-step summary{cursor:pointer;padding:7px 11px;font-size:12px;font-weight:700;color:var(--warn);background:rgba(251,191,36,.06);list-style:none;display:flex;align-items:center;gap:7px}
+.agent-step summary::-webkit-details-marker{display:none}
+.agent-step summary .arrow{margin-left:auto;transition:.2s;color:var(--faint)}
+.agent-step[open] summary .arrow{transform:rotate(90deg)}
+.agent-step .inner{padding:10px 12px;font-size:12.5px;color:#c3cbdd;white-space:pre-wrap;font-family:var(--mono);max-height:300px;overflow:auto;background:rgba(0,0,0,.18)}
+.agent-step.done summary{color:var(--ok);background:rgba(52,211,153,.06)}
+.agent-step.live summary{color:var(--acc2);background:rgba(34,211,238,.07)}
+
+/* composer */
+.composer{border-top:1px solid var(--border);padding:10px 12px;background:var(--panel)}
+.composer textarea{width:100%;min-height:64px;max-height:180px;resize:vertical;padding:9px 11px;font-size:13.5px;line-height:1.5;border-radius:10px}
+.composer textarea::placeholder{color:var(--faint)}
+.composer .row{display:flex;gap:8px;margin-top:8px;align-items:center}
+.composer .hint{color:var(--faint);font-size:11px;margin-left:auto}
+kbd{font-family:var(--mono);font-size:10px;background:var(--panel3);border:1px solid var(--border2);border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:var(--dim)}
+
+/* ---------- workspace ---------- */
+.tabs{display:flex;align-items:center;gap:4px;padding:7px 10px;border-bottom:1px solid var(--border);background:var(--panel)}
+.tab{padding:6px 14px;border-radius:8px;color:var(--dim);font-weight:600;font-size:13px}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--panel3);color:#fff;box-shadow:inset 0 0 0 1px var(--border2)}
+.tabs .filebadge{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin:0 6px;display:flex;align-items:center;gap:6px}
+.filebadge .applied{color:var(--ok);font-weight:700}
+.pane{flex:1;display:none;min-height:0}
+.pane.active{display:flex}
+#panePreview{flex-direction:column}
+#preview{flex:1;width:100%;border:none;background:#fff}
+#previewWrap{flex:1;position:relative;background:#0e1117}
+.preview-tools{display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--panel2);font-size:12px;color:var(--dim)}
+#paneCode{flex-direction:row}
+.editor{flex:1;display:flex;min-width:0;background:#0d1117}
+#gutter{width:48px;flex:none;overflow:hidden;background:#0d1117;border-right:1px solid var(--border);padding:12px 8px 12px 0;text-align:right;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:#3d465c;user-select:none}
+#code{flex:1;border:none;border-radius:0;background:transparent;resize:none;padding:12px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre;tab-size:2;color:#d5dcea}
+#code:focus{border:none}
+
+/* ---------- modal ---------- */
+.overlay{position:fixed;inset:0;background:rgba(5,8,14,.72);backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow-y:auto;padding:40px 16px}
+.overlay.open{display:flex}
+.modal{width:640px;max-width:100%;background:var(--panel);border:1px solid var(--border2);border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.55)}
+.modal .mhead{display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)}
+.modal .mhead h2{font-size:16px}
+.modal .mhead .x{margin-left:auto;font-size:20px;color:var(--dim);padding:4px 10px;border-radius:8px}
+.modal .mhead .x:hover{background:var(--panel3);color:#fff}
+.modal .mbody{padding:18px 20px;display:flex;flex-direction:column;gap:22px}
+.card{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--panel2)}
+.card h3{font-size:13.5px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.card .desc{color:var(--dim);font-size:12px;line-height:1.5;margin-bottom:12px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.field label{font-size:11.5px;font-weight:700;color:var(--dim);letter-spacing:.3px}
+.field input[type=text],.field input[type=password],.field select{padding:8px 10px}
+.rowline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.note{font-size:11.5px;color:var(--faint);line-height:1.5;margin-top:8px}
+.note b{color:var(--warn)}
+.link{color:var(--acc2);text-decoration:none;font-weight:600}
+.link:hover{text-decoration:underline}
+.ghuser{display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.35);border-radius:10px;margin-bottom:10px;font-weight:600}
+.ghuser img{width:26px;height:26px;border-radius:50%}
+.hidden{display:none !important}
+.divider{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:11px;margin:6px 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.checkline{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--dim);cursor:pointer;user-select:none}
+.checkline input{accent-color:var(--acc);width:15px;height:15px}
+
+/* toast */
+#toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:99;max-width:380px}
+.toast{padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;background:var(--panel3);border:1px solid var(--border2);box-shadow:0 8px 30px rgba(0,0,0,.4);display:flex;gap:8px;align-items:flex-start;animation:pop .18s ease}
+.toast.ok{border-color:rgba(52,211,153,.5)}
+.toast.err{border-color:rgba(248,113,113,.5)}
+.toast a{color:var(--acc2)}
+@keyframes pop{from{transform:translateY(8px);opacity:0}}
+
+@media (max-width:960px){
+  main{flex-direction:column}
+  .chat{width:100%;min-width:0;height:52%;border-right:none;border-bottom:1px solid var(--border)}
+  .workspace{height:48%}
+  .logo span.full{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="zap">⚡</span> <span class="full">GLM Code Studio</span></div>
+  <div class="hspace"></div>
+  <div class="model-wrap">
+    <label for="modelSel">Model</label>
+    <input id="modelSel" list="modelList" title="Model — pick or type any model id" spellcheck="false" autocomplete="off" style="width:170px;padding:6px 8px;font-size:12.5px">
+    <datalist id="modelList"></datalist>
+  </div>
+  <span class="dot" id="statusDot" title="Not connected"></span>
+  <button class="btn" id="btnSettings">⚙ Settings</button>
+  <button class="btn" id="btnGH">🐙 GitHub</button>
+</header>
+
+<main>
+  <!-- ============ CHAT ============ -->
+  <section class="chat">
+    <div class="chat-head">
+      <div>
+        <div class="title">AI Builder Chat</div>
+        <div style="color:var(--dim);font-size:11px">describe a game → get running code</div>
+      </div>
+      <div class="sub">
+        <label class="switch" title="Agent mode: the model plans, builds and self-checks the app step by step before delivering final code">
+          <input type="checkbox" id="agentMode" checked><span class="track"></span> Agent mode
+        </label>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="messages" id="messages"></div>
+    <div class="composer">
+      <textarea id="prompt" placeholder="Describe what to build… e.g. “Make a neon Breakout game with power-ups, particle effects, mouse + keyboard controls and a high-score board”"></textarea>
+      <div class="row">
+        <button class="btn primary" id="btnSend">▶ Build it</button>
+        <button class="btn ghost" id="btnStop" disabled>■ Stop</button>
+        <button class="btn small ghost" id="btnNew" title="Clear chat and start fresh">New</button>
+        <div class="hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WORKSPACE ============ -->
+  <section class="workspace">
+    <div class="tabs">
+      <button class="tab active" data-pane="panePreview">▶ Preview</button>
+      <button class="tab" data-pane="paneCode">&lt;/&gt; Code</button>
+      <span class="filebadge" id="fileBadge"></span>
+      <div class="hspace"></div>
+      <button class="btn small ghost" id="btnCopy">⧉ Copy</button>
+      <button class="btn small ghost" id="btnDownload">⬇ Download HTML</button>
+      <button class="btn small" id="btnApply">⚡ Apply to preview</button>
+      <button class="btn small primary" id="btnSaveGH">☁ Push to GitHub</button>
+    </div>
+
+    <div class="pane active" id="panePreview">
+      <div class="preview-tools">
+        <span id="previewInfo">Nothing built yet — ask the AI to make something.</span>
+        <div class="hspace" style="flex:1"></div>
+        <label class="switch" title="Auto-apply code to the preview when the AI finishes">
+          <input type="checkbox" id="autoApply" checked><span class="track"></span> Auto-apply
+        </label>
+        <button class="btn small ghost" id="btnReload" title="Reload preview">⟳</button>
+        <button class="btn small ghost" id="btnOpen" title="Open game in a new browser tab">↗ Open</button>
+      </div>
+      <div id="previewWrap"><iframe id="preview" sandbox="allow-scripts allow-modals allow-pointer-lock allow-popups allow-same-origin"></iframe></div>
+    </div>
+
+    <div class="pane" id="paneCode">
+      <div class="editor">
+        <div id="gutter">1</div>
+        <textarea id="code" spellcheck="false" placeholder="The AI's code lands here. You can edit it, then Apply to preview."></textarea>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ SETTINGS MODAL ============ -->
+<div class="overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="mhead"><h2>⚙ Settings</h2><button class="x" data-close="settingsOverlay">✕</button></div>
+    <div class="mbody">
+      <div class="card">
+        <h3>🤖 AI provider</h3>
+        <div class="desc">The app talks directly from your browser to the provider's API. Your key is stored only in this browser's <code>localStorage</code> — never hardcoded in the file, so it is safe to push the HTML to GitHub.</div>
+        <div class="field">
+          <label>PROVIDER</label>
+          <select id="setProvider">
+            <option value="openrouter">OpenRouter (recommended — all GLM models)</option>
+            <option value="zai">Z.AI (api.z.ai)</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI</option>
+            <option value="custom">Custom (OpenAI-compatible)</option>
+          </select>
+        </div>
+        <div class="field" id="baseUrlField" style="display:none">
+          <label>BASE URL</label>
+          <input type="text" id="setBaseUrl" placeholder="https://your-endpoint/v1">
+        </div>
+        <div class="field">
+          <label>API KEY</label>
+          <input type="password" id="setKey" placeholder="sk-…" autocomplete="off">
+        </div>
+        <div class="rowline">
+          <button class="btn primary" id="btnTest">Test connection</button>
+          <span id="testResult" style="font-size:12px;color:var(--dim)"></span>
+        </div>
+        <div class="note">Free GLM pick: <b>z-ai/glm-5.3-flash</b> · flagship: <b>z-ai/glm-5.3</b> / <b>glm-5.3-prime</b>. Get an OpenRouter key at <a class="link" href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</div>
+      </div>
+      <div class="card">
+        <h3>🎲 Creativity (temperature)</h3>
+        <div class="desc">Lower = precise and deterministic (better for exact code fixes). Higher = more inventive (nice for game ideas).</div>
+        <div class="rowline">
+          <input type="range" id="setTemp" min="0" max="1.4" step="0.1" value="0.6" style="flex:1;accent-color:var(--acc)">
+          <b id="tempVal" style="width:26px;text-align:right">0.6</b>
+        </div>
+      </div>
+      <div class="rowline" style="justify-content:flex-end">
+        <button class="btn ghost" data-close="settingsOverlay">Cancel</button>
+        <button class="btn primary" id="btnSaveSettings">Save settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GITHUB MODAL ============ -->
+<div class="overlay" id="ghOverlay">
+  <div class="modal">
+    <div class="mhead"><h2>🐙 GitHub</h2><button class="x" data-close="ghOverlay">✕</button></div>
+    <div class="mbody">
+      <div id="ghNotConnected">
+        <div class="card">
+          <h3>Connect your GitHub account</h3>
+          <div class="desc">Push the apps you build straight to a GitHub repository — then host them free with GitHub Pages. Everything runs in your browser; the token is stored only in <code>localStorage</code>.</div>
+          <div class="field">
+            <label>GITHUB PERSONAL ACCESS TOKEN</label>
+            <input type="password" id="ghToken" placeholder="ghp_… or github_pat_…" autocomplete="off">
+          </div>
+          <div class="rowline">
+            <button class="btn primary" id="btnGHConnect">Connect</button>
+            <a class="link" href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">Create a token ↗</a>
+          </div>
+          <div class="note"><b>Token scopes needed:</b> fine-grained → <i>Repository: Read &amp; Write, Metadata: Read</i> (classic → <code>repo</code> + <code>workflow</code>). Keep the shortest expiry you like; you can revoke it any time on GitHub.</div>
+        </div>
+        <div class="card">
+          <h3>🤖 Let the AI do the Git work</h3>
+          <div class="desc">Tip: in Agent mode you can just chat <i>“push this to a new repo called my-games and enable GitHub Pages”</i> — the studio's agent uses the GitHub API on its own to create repos, write files and push.</div>
+        </div>
+      </div>
+
+      <div id="ghConnected" class="hidden">
+        <div class="ghuser"><img id="ghAvatar" alt=""> <span id="ghName"></span></div>
+        <div class="card">
+          <h3>Push current app</h3>
+          <div class="desc">Commit the file from the Code tab (or the live preview) to one of your repositories. Uses the GitHub Contents API — no git command line needed.</div>
+          <div class="field">
+            <label>REPOSITORY</label>
+            <select id="ghRepoSel"></select>
+          </div>
+          <div class="rowline" style="margin-bottom:10px">
+            <button class="btn small" id="btnRefreshRepos">⟳ Refresh list</button>
+            <button class="btn small" id="btnNewRepo" style="margin-left:auto">+ New repo…</button>
+          </div>
+          <div class="field">
+            <label>FILE NAME (with extension)</label>
+            <input type="text" id="ghFile" value="index.html">
+          </div>
+          <div class="field">
+            <label>COMMIT MESSAGE</label>
+            <input type="text" id="ghCommit" value="Build app with GLM Code Studio">
+          </div>
+          <div class="field">
+            <label>BRANCH</label>
+            <input type="text" id="ghBranch" value="main">
+          </div>
+          <div class="rowline">
+            <button class="btn primary" id="btnPush">☁ Push</button>
+            <span id="pushResult" style="font-size:12px;color:var(--dim)"></span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>🌍 Free hosting with GitHub Pages</h3>
+          <div class="desc">After pushing <b>index.html</b> to a public repo, turn on Pages once and every future push auto-deploys. The button below opens the exact settings page.</div>
+          <div class="rowline">
+            <button class="btn" id="btnPages">Open repo Pages settings ↗</button>
+            <button class="btn ghost" id="btnGHDisc">Disconnect</button>
+          </div>
+          <div class="note">In the GitHub UI: <b>Settings → Pages → Branch: main / (root) → Save</b>. Your game goes live at <code>https://&lt;user&gt;.github.io/&lt;repo&gt;/</code> within a minute.</div>
+        </div>
+        <div class="rowline" style="justify-content:flex-end">
+          <button class="btn ghost" data-close="ghOverlay">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+'use strict';
+/* =============== tiny helpers =============== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const encW = w => (w||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function toast(msg, type){ 
+  const t = document.createElement('div'); t.className = 'toast ' + (type||'');
+  t.innerHTML = msg; $('toasts').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),350); }, 4200);
+}
+function now(){ return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+
+/* =============== state =============== */
+const LS = {
+  provider:'glmcs_provider', key:'glmcs_key', baseUrl:'glmcs_baseurl', model:'glmcs_model',
+  temp:'glmcs_temp', agent:'glmcs_agent', auto:'glmcs_auto', gh:'glmcs_gh', chats:'glmcs_chats'
+};
+const DEFAULT_MODEL = 'z-ai/glm-5.3';
+const MODELS = [
+  ['z-ai/glm-5.3','GLM 5.3 — flagship'],
+  ['z-ai/glm-5.3-prime','GLM 5.3 Prime — max reasoning'],
+  ['z-ai/glm-5.3-flash','GLM 5.3 Flash — free & fast'],
+  ['z-ai/glm-5.2','GLM 5.2'],
+  ['z-ai/glm-5.1','GLM 5.1'],
+  ['z-ai/glm-5','GLM 5'],
+  ['z-ai/glm-5-turbo','GLM 5 Turbo'],
+  ['z-ai/glm-4.6','GLM 4.6'],
+  ['z-ai/glm-4.5','GLM 4.5'],
+];
+const PROVIDER_BASE = { openrouter:'https://openrouter.ai/api/v1', zai:'https://api.z.ai/api/paas/v4', deepseek:'https://api.deepseek.com/v1', openai:'https://api.openai.com/v1' };
+const settings = {
+  provider: localStorage.getItem(LS.provider) || 'openrouter',
+  key: localStorage.getItem(LS.key) || '',
+  baseUrl: localStorage.getItem(LS.baseUrl) || '',
+  model: localStorage.getItem(LS.model) || DEFAULT_MODEL,
+  temp: parseFloat(localStorage.getItem(LS.temp) || '0.6'),
+  agent: localStorage.getItem(LS.agent) !== '0',
+  auto: localStorage.getItem(LS.auto) !== '0',
+};
+let gh = JSON.parse(localStorage.getItem(LS.gh) || 'null'); // {token, login, name, avatar}
+let abortCtrl = null, busy = false, curFile = '';
+let chat = loadChat();   // [{role, content}] persistent history
+
+function baseUrl(){
+  if (settings.provider === 'custom') return settings.baseUrl || '';
+  return PROVIDER_BASE[settings.provider] || PROVIDER_BASE.openrouter;
+}
+function apiKey(){ return settings.key || ''; }
+function loadChat(){ try { return JSON.parse(localStorage.getItem(LS.chats) || '[]'); } catch(e){ return []; } }
+function saveChat(){ try { localStorage.setItem(LS.chats, JSON.stringify(chat.slice(-40))); } catch(e){} }
+
+/* =============== system prompt =============== */
+const SYSTEM_PROMPT = `You are GLM Code Studio's AI builder — an expert web-game and web-app engineer.
+
+## Output rules (critical)
+1. Deliver code as ONE complete, self-contained HTML file per app: all CSS in <style>, all JS in <script>, no external files (CDN links allowed).
+2. ALWAYS wrap every code block in markdown fences with the language: \`\`\`html ... \`\`\` . Never truncate. Never write "rest of the code unchanged" — always output the FULL updated file when changing an app.
+3. Canvas games must work standalone: crisp rendering, requestAnimationFrame loop, keyboard AND mouse/touch controls, restart (R), pause (P), a visible score, and a Game Over → restart flow. Prevent arrow-key/space page scrolling when the game uses those keys.
+4. After the code block, add 2-4 short bullet points: controls and notable features.
+5. Keep the game visible without scrolling: prefer full-viewport canvas or a centered fixed-size stage.
+
+## Agent mode
+When the request is bigger than a trivial snippet (a whole app, a multi-part feature set, a big refactor), FIRST output a numbered build plan (3-6 steps, one line each) INSIDE a single \`\`\`plan code block, then implement it in the code block(s). Keep each step to one line. For follow-up edits of the current app, you may skip the plan. When you improve an app based on self-review, briefly list what you fixed.`;
+
+const AGENT_HINT = `Available tools (the studio executes these for you automatically when relevant):
+- preview: the user sees the running app live; describe what they should try.
+- github: if the user asks to push/deploy/create a repo, say you'll prepare it and mention they can use the Push to GitHub button, or ask them to confirm the repo name.`;
+
+/* =============== message rendering =============== */
+function mdLite(t){
+  // minimal safe markdown: code fences handled by caller; here inline code/bold/lists/paragraphs
+  const lines = t.split('\n'); let out = '', inList = false;
+  const inline = s => esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  for (const ln of lines){
+    const m = ln.match(/^\s*[-*]\s+(.*)/);
+    if (m){ if (!inList){ out += '<ul>'; inList = true; } out += '<li>' + inline(m[1]) + '</li>'; continue; }
+    if (inList){ out += '</ul>'; inList = false; }
+    if (ln.trim() === '') continue;
+    out += '<p>' + inline(ln) + '</p>';
+  }
+  if (inList) out += '</ul>';
+  return out || '<p></p>';
+}
+
+function splitBlocks(t){
+  // split assistant text into [code|text] segments
+  const segs = []; let i = 0;
+  const re = /```([\w+-]*)\n?([\s\S]*?)(?:```|$)/g; let m;
+  while ((m = re.exec(t)) !== null){
+    if (m.index > i) segs.push({type:'text', text:t.slice(i, m.index)});
+    segs.push({type:'code', lang:(m[1]||'').toLowerCase(), text:m[2]});
+    i = m.index + m[0].length;
+  }
+  if (i < t.length) segs.push({type:'text', text:t.slice(i)});
+  return segs;
+}
+
+function addMsg(role, content, opts){
+  opts = opts || {};
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + (role === 'user' ? 'user' : 'assistant');
+  if (opts.stepOf){ wrap.dataset.step = opts.stepOf; wrap.style.display = 'none'; }
+  const who = role === 'user' ? 'You' : (opts.stepOf ? 'Sub-agent' : 'GLM');
+  wrap.innerHTML = `<div class="who">${who} · ${now()}</div><div class="body"></div>`;
+  const body = wrap.querySelector('.body');
+  if (role === 'user'){ body.innerHTML = mdLite(content); }
+  else if (opts.streaming){ body.classList.add('streaming'); body.textContent = content; }
+  else renderAssistant(body, content, opts);
+  $('messages').appendChild(wrap);
+  if (!opts.stepOf) $('messages').scrollTop = $('messages').scrollHeight;
+  return wrap;
+}
+
+function renderAssistant(body, content, opts){
+  body.classList.remove('streaming');
+  body.innerHTML = '';
+  let htmlBlockApplied = false, planShown = false;
+  for (const seg of splitBlocks(content)){
+    if (seg.type === 'text'){
+      if (seg.text.trim()){ body.insertAdjacentHTML('beforeend', mdLite(seg.text.trim())); }
+    } else {
+      const lang = seg.lang || (seg.text.trimStart().startsWith('<') ? 'html' : '');
+      const code = seg.text.replace(/\s+$/, '');
+      if (lang === 'plan'){
+        planShown = true;
+        const d = document.createElement('details');
+        d.className = 'agent-step live';
+        d.innerHTML = `<summary>📋 Build plan <span class="arrow">▸</span></summary><div class="inner">${esc(code)}</div>`;
+        body.appendChild(d);
+      } else if (lang === 'html' || lang === ''){
+        const card = document.createElement('div');
+        card.className = 'codecard';
+        const size = code.length;
+        card.innerHTML = `<div class="bar"><span class="lang">html · ${(size/1024).toFixed(1)} KB</span><span class="grow"></span>` +
+          `<button class="btn small ghost">⧉ Copy</button> <button class="btn small">⚡ Apply</button></div><pre>${esc(code)}</pre>`;
+        card.querySelector('.btn.ghost').onclick = () => { navigator.clipboard.writeText(code).then(()=>toast('Code copied','ok')); };
+        card.querySelector('.btn:not(.ghost)').onclick = () => applyCode(code, card);
+        body.appendChild(card);
+        if (!htmlBlockApplied){ applyCode(code, card, true); htmlBlockApplied = true; }
+      } else {
+        const card = document.createElement('div');
+        card.className = 'codecard';
+        card.innerHTML = `<div class="bar"><span class="lang">${esc(lang||'code')}</span><span class="grow"></span><button class="btn small ghost">⧉ Copy</button></div><pre>${esc(code)}</pre>`;
+        card.querySelector('button').onclick = () => { navigator.clipboard.writeText(code).then(()=>toast('Code copied','ok')); };
+        body.appendChild(card);
+      }
+    }
+  }
+  const foot = document.createElement('div'); foot.className = 'foot';
+  foot.innerHTML = `<span>${now()}</span>`;
+  if (htmlBlockApplied) foot.innerHTML += ' <span class="badge-ok">⚡ applied to preview</span>';
+  body.appendChild(foot);
+}
+
+/* =============== preview / editor =============== */
+function applyCode(code, card){
+  curFile = 'game.html';
+  $('code').value = code;
+  updateGutter();
+  $('fileBadge').innerHTML = `<span style="color:var(--ok)">●</span> game.html`;
+  const blob = new Blob([code], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const old = $('preview').src; if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
+  $('preview').src = url;
+  $('previewInfo').textContent = 'Running: game.html · ' + (code.length/1024).toFixed(1) + ' KB';
+  if (card){ card.classList.add('applied'); }
+  const tab = document.querySelector('.tab[data-pane="panePreview"]'); if (tab) switchTab('panePreview');
+}
+function updateGutter(){
+  const n = $('code').value.split('\n').length;
+  $('gutter').innerHTML = Array.from({length: Math.min(n,999)}, (_,i)=>i+1).join('<br>');
+}
+$('code').addEventListener('scroll', ()=>{ $('gutter').scrollTop = $('code').scrollTop; });
+$('code').addEventListener('input', updateGutter);
+$('btnApply').onclick = () => {
+  const c = $('code').value.trim();
+  if (!c){ toast('No code to apply — ask the AI to build something first.'); return; }
+  applyCode(c, null); toast('Applied to preview ⚡','ok');
+};
+$('btnReload').onclick = () => { if ($('preview').src) { $('preview').src = $('preview').src; toast('Preview reloaded'); } };
+$('btnOpen').onclick = () => {
+  if (!$('preview').src){ toast('Nothing to open yet.'); return; }
+  window.open($('preview').src, '_blank');
+};
+$('btnCopy').onclick = () => {
+  if (!$('code').value){ toast('Nothing to copy.'); return; }
+  navigator.clipboard.writeText($('code').value).then(()=>toast('Code copied to clipboard','ok'));
+};
+$('btnDownload').onclick = () => {
+  if (!$('code').value){ toast('Nothing to download.'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([$('code').value], {type:'text/html'}));
+  a.download = 'game.html'; a.click();
+  toast('Downloaded game.html','ok');
+};
+
+/* =============== tabs =============== */
+function switchTab(pane){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.pane === pane));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === pane));
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.pane));
+
+/* =============== chat completions (streaming) =============== */
+async function callLLM(messages, opts){
+  opts = opts || {};
+  const headers = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + apiKey() };
+  if (settings.provider === 'openrouter'){
+    headers['HTTP-Referer'] = location.origin && location.origin !== 'null' && location.origin !== 'file://' ? location.origin : 'https://openrouter.ai';
+    headers['X-Title'] = 'GLM Code Studio';
+  }
+  const body = {
+    model: opts.model || settings.model,
+    messages, stream: true,
+    temperature: opts.temp != null ? opts.temp : settings.temp,
+    max_tokens: 16000,
+  };
+  const res = await fetch(baseUrl() + '/chat/completions', { method:'POST', headers, body: JSON.stringify(body), signal: opts.signal });
+  if (!res.ok){
+    let d = ''; try { d = (await res.json()).error?.message || ''; } catch(e){}
+    throw new Error(`API ${res.status}: ${d || res.statusText}`);
+  }
+  return streamSSE(res, opts);
+}
+
+function streamSSE(res, opts){
+  return new Promise((resolve, reject) => {
+    const reader = res.body.getReader(); const dec = new TextDecoder();
+    let buf = '', full = '', callCode = null;
+    (async () => {
+      try {
+        while (true){
+          const {done, value} = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, {stream:true});
+          let idx;
+          while ((idx = buf.indexOf('\n')) >= 0){
+            const line = buf.slice(0, idx).trim(); buf = buf.slice(idx+1);
+            if (!line.startsWith('data:')) continue;
+            const payload = line.slice(5).trim();
+            if (payload === '[DONE]') { buf=''; break; }
+            let j; try { j = JSON.parse(payload); } catch(e){ continue; }
+            const d = j.choices && j.choices[0];
+            if (!d) continue;
+            const piece = d.delta || {};
+            if (piece.content){ full += piece.content; opts.onText && opts.onText(full); }
+            if (piece.reasoning_content){ opts.onReason && opts.onReason(piece.reasoning_content); }
+            if (d.delta && d.delta.tool_calls){
+              for (const tc of d.delta.tool_calls){
+                if (tc.function && tc.function.arguments) { callCode = (callCode||'') + tc.function.arguments; }
+              }
+            }
+          }
+        }
+        resolve({ content: full, toolCode: callCode });
+      } catch(e){ reject(e); }
+    })();
+  });
+}
+
+/* =============== send / agent loop =============== */
+function setBusy(b){
+  busy = b;
+  $('btnSend').disabled = b; $('btnStop').disabled = !b;
+  $('btnSend').textContent = b ? '⏳ Working…' : '▶ Build it';
+  $('statusDot').className = 'dot' + (b ? '' : (apiKey() ? ' ok' : ''));
+  $('statusDot').title = b ? 'Working…' : (apiKey() ? 'Ready' : 'No API key — open Settings');
+}
+$('btnStop').onclick = () => { if (abortCtrl){ abortCtrl.abort(); toast('Stopped'); } };
+$('btnNew').onclick = () => {
+  if (busy) return toast('Wait for the current run to finish (or Stop).');
+  chat = []; saveChat();
+  $('messages').innerHTML = '';
+  addWelcome();
+  toast('Started a fresh chat','ok');
+};
+
+const CHIPS = [
+  ['🎮 Snake','Make a polished Snake game: neon glow, smooth grid movement, wrap-around walls off, score + best score saved in localStorage, arrow keys and swipe, pause with P, restart with R.'],
+  ['🧱 Breakout','Make a neon Breakout game with multiple levels, power-ups (wide paddle, multiball, laser), particle explosions, mouse + keyboard control, and a start screen.'],
+  ['👾 Space shooter','Make a space shooter: enemies in waves, boss every 3 waves, upgrades between waves, starfield parallax, sound with WebAudio, keyboard + mouse aim.'],
+  ['🏃 Platformer','Make a small platformer game: 3 levels, coins, double jump, moving platforms, simple enemy AI, camera follow, and a win screen.'],
+  ['🃏 2048','Make 2048 with smooth CSS animations, score + best score in localStorage, undo, and touch swipe support.'],
+  ['📝 To-do app','Make a stylish to-do app: add/edit/delete/complete, filters, drag to reorder, dark mode, data in localStorage, import/export JSON.'],
+];
+
+function addWelcome(){
+  addMsg('assistant', `**Welcome to GLM Code Studio** ⚡
+
+I build **games, tools and web apps** as single self-contained HTML files — they run instantly in the Preview tab on the right.
+
+- Describe what you want, or tap a preset below the header.
+- **Agent mode** (toggle in the top right of this panel): for bigger apps I first write a short build plan, then implement it and self-review before delivering.
+- Ask follow-ups like *"add power-ups"*, *"make it harder"*, *"polish the visuals"* — I always return the full updated file.
+- When you like the result: **Push to GitHub** (☁ button) to publish it, and turn on GitHub Pages for a live URL.
+
+Everything runs locally in your browser — your API key never leaves this file's localStorage.`, {});
+}
+
+function renderHistory(){
+  $('messages').innerHTML = '';
+  if (chat.length === 0){ addWelcome(); return; }
+  for (const m of chat){
+    if (m.role === 'user') addMsg('user', m.content, {});
+    else if (m.content) addMsg('assistant', m.content, {});
+  }
+  $('messages').scrollTop = $('messages').scrollHeight;
+}
+
+async function send(text){
+  if (busy) return;
+  text = (text || '').trim();
+  if (!text){ return; }
+  if (!apiKey()){ openOverlay('settingsOverlay'); toast('Add your API key first (Settings ⚙)','err'); return; }
+  chat.push({role:'user', content:text}); saveChat();
+  addMsg('user', text, {});
+  setBusy(true);
+  abortCtrl = new AbortController();
+  const msgEl = addMsg('assistant', '', {streaming:true});
+  const body = msgEl.querySelector('.body');
+  let lastCode = ''; 
+  try {
+    const messages = [{role:'system', content: SYSTEM_PROMPT + (settings.agent ? '\n\n' + AGENT_HINT : '')}, ...chat];
+    const r = await callLLM(messages, {
+      signal: abortCtrl.signal,
+      onText: t => { body.textContent = t; body.insertAdjacentHTML('beforeend','<span class="streaming-cursor"></span>'); $('messages').scrollTop = $('messages').scrollHeight; },
+    });
+    const content = r.content || '';
+    chat.push({role:'assistant', content}); saveChat();
+    renderAssistant(body, content, {});
+    if (!content){ toast('Empty response — try again or switch model','err'); }
+  } catch(e){
+    if (e.name === 'AbortError'){ body.textContent += '\n\n[stopped]'; }
+    else {
+      console.error(e);
+      body.innerHTML = `<p style="color:var(--err)">⚠ ${esc(e.message)}</p><p style="color:var(--dim);font-size:12px">Check the model id and key in Settings. If you're on OpenRouter free tier, try <code>z-ai/glm-5.3-flash</code>.</p>`;
+      toast('Request failed — see message', 'err');
+    }
+  } finally {
+    setBusy(false); abortCtrl = null;
+    $('messages').scrollTop = $('messages').scrollHeight;
+  }
+}
+$('btnSend').onclick = () => send($('prompt').value);
+$('prompt').addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key === 'Enter'){ e.preventDefault(); send($('prompt').value); }
+});
+</script>
+<script>
+'use strict';
+/* =============== overlays =============== */
+function openOverlay(id){ $(id).classList.add('open'); }
+function closeOverlay(id){ $(id).classList.remove('open'); }
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => closeOverlay(b.dataset.close));
+document.querySelectorAll('.overlay').forEach(o => o.addEventListener('mousedown', e => { if (e.target === o) o.classList.remove('open'); }));
+$('btnSettings').onclick = () => {
+  $('setProvider').value = settings.provider;
+  $('setKey').value = settings.key;
+  $('setBaseUrl').value = settings.baseUrl;
+  $('setTemp').value = settings.temp; $('tempVal').textContent = settings.temp.toFixed(1);
+  $('baseUrlField').style.display = settings.provider === 'custom' ? '' : 'none';
+  $('testResult').textContent = '';
+  openOverlay('settingsOverlay');
+};
+$('setProvider').onchange = () => { $('baseUrlField').style.display = $('setProvider').value === 'custom' ? '' : 'none'; };
+$('setTemp').oninput = () => { $('tempVal').textContent = parseFloat($('setTemp').value).toFixed(1); };
+
+$('btnSaveSettings').onclick = () => {
+  settings.provider = $('setProvider').value;
+  settings.key = $('setKey').value.trim();
+  settings.baseUrl = $('setBaseUrl').value.trim().replace(/\/+$/,'');
+  settings.temp = parseFloat($('setTemp').value);
+  localStorage.setItem(LS.provider, settings.provider);
+  localStorage.setItem(LS.key, settings.key);
+  localStorage.setItem(LS.baseUrl, settings.baseUrl);
+  localStorage.setItem(LS.temp, settings.temp);
+  setBusy(false);
+  closeOverlay('settingsOverlay');
+  toast(apiKey() ? 'Settings saved ✅' : 'Saved (no key set)', apiKey() ? 'ok' : '');
+};
+$('btnTest').onclick = async () => {
+  const p = $('setProvider').value, k = $('setKey').value.trim();
+  const base = p === 'custom' ? $('setBaseUrl').value.trim().replace(/\/+$/,'') : PROVIDER_BASE[p];
+  $('testResult').innerHTML = '<span style="color:var(--dim)">testing…</span>';
+  try {
+    const res = await fetch(base + '/models', { headers: k ? { 'Authorization':'Bearer ' + k } : {} });
+    $('testResult').innerHTML = res.ok
+      ? '<span style="color:var(--ok)">✅ reachable (' + res.status + ')</span>'
+      : '<span style="color:var(--err)">❌ ' + res.status + ' ' + esc(res.statusText) + '</span>';
+  } catch(e){
+    // CORS-blocked endpoints can still be fine for /chat/completions; show a hint
+    $('testResult').innerHTML = '<span style="color:var(--warn)">⚠ ' + esc(e.message) + ' (may be CORS on /models; try a chat)</span>';
+  }
+};
+
+/* =============== model list =============== */
+function fillModels(){
+  $('modelList').innerHTML = MODELS.map(m => `<option value="${m[0]}">${esc(m[1])}</option>`).join('');
+  $('modelSel').value = settings.model;
+}
+$('modelSel').addEventListener('change', () => {
+  settings.model = $('modelSel').value.trim() || DEFAULT_MODEL;
+  $('modelSel').value = settings.model;
+  localStorage.setItem(LS.model, settings.model);
+  toast('Model: ' + settings.model);
+});
+
+/* =============== chips =============== */
+$('chips').innerHTML = CHIPS.map((c,i) => `<button class="chip" data-i="${i}">${c[0]}</button>`).join('');
+document.querySelectorAll('.chip').forEach(c => c.onclick = () => { $('prompt').value = CHIPS[+c.dataset.i][1]; $('prompt').focus(); });
+
+/* =============== toggles =============== */
+$('agentMode').checked = settings.agent;
+$('agentMode').onchange = () => { settings.agent = $('agentMode').checked; localStorage.setItem(LS.agent, settings.agent ? '1':'0'); };
+$('autoApply').checked = settings.auto;
+$('autoApply').onchange = () => { settings.auto = $('autoApply').checked; localStorage.setItem(LS.auto, settings.auto ? '1':'0'); };
+
+/* =============== GitHub =============== */
+const GH_API = 'https://api.github.com';
+function ghHeaders(){ return { 'Authorization':'Bearer ' + gh.token, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28' }; }
+
+$('btnGH').onclick = () => { openOverlay('ghOverlay'); if (gh) showGHConnected(); };
+$('btnSaveGH').onclick = () => { 
+  if (!$('code').value.trim()){ toast('Build something first — nothing to push.'); return; }
+  $('btnGH').click();
+};
+
+async function ghConnect(){
+  const tok = $('ghToken').value.trim();
+  if (!tok) return toast('Paste a token first','err');
+  try {
+    const r = await fetch(GH_API + '/user', { headers: { 'Authorization':'Bearer ' + tok, 'Accept':'application/vnd.github+json' } });
+    if (!r.ok) throw new Error(r.status === 401 ? 'invalid token (401)' : 'GitHub ' + r.status);
+    const u = await r.json();
+    gh = { token: tok, login: u.login, name: u.name || u.login, avatar: u.avatar_url };
+    localStorage.setItem(LS.gh, JSON.stringify(gh));
+    showGHConnected();
+    toast('Connected as ' + u.login + ' 🐙','ok');
+  } catch(e){
+    toast('GitHub connect failed: ' + esc(e.message),'err');
+  }
+}
+$('btnGHConnect').onclick = ghConnect;
+$('ghToken').addEventListener('keydown', e => { if (e.key === 'Enter') ghConnect(); });
+
+function showGHConnected(){
+  $('ghNotConnected').classList.add('hidden');
+  $('ghConnected').classList.remove('hidden');
+  $('ghAvatar').src = gh.avatar; $('ghName').textContent = gh.name + ' (@' + gh.login + ')';
+  loadRepos();
+}
+$('btnGHDisc').onclick = () => {
+  gh = null; localStorage.removeItem(LS.gh);
+  $('ghConnected').classList.add('hidden'); $('ghNotConnected').classList.remove('hidden');
+  $('ghToken').value = '';
+  toast('Disconnected from GitHub');
+};
+
+async function loadRepos(){
+  const sel = $('ghRepoSel');
+  sel.innerHTML = '<option>loading…</option>';
+  try {
+    const r = await fetch(GH_API + '/user/repos?per_page=100&sort=updated&type=owner', { headers: ghHeaders() });
+    if (!r.ok) throw new Error('GitHub ' + r.status);
+    const repos = await r.json();
+    sel.innerHTML = repos.map(x => `<option value="${esc(x.full_name)}">${esc(x.full_name)}${x.permissions&&x.permissions.push?'':' (read-only)'}</option>`).join('') || '<option value="">(no repos)</option>';
+  } catch(e){ sel.innerHTML = '<option value="">failed to load</option>'; toast('Repo list failed: ' + esc(e.message),'err'); }
+}
+$('btnRefreshRepos').onclick = loadRepos;
+
+$('btnNewRepo').onclick = async () => {
+  const name = prompt('New repository name (e.g. my-games):');
+  if (!name) return;
+  const pub = confirm('Create PUBLIC repo? (needed for free GitHub Pages)\n\nOK = public, Cancel = private') ;
+  try {
+    const r = await fetch(GH_API + '/user/repos', {
+      method:'POST', headers: ghHeaders(),
+      body: JSON.stringify({ name, private: !pub, auto_init: true, description: 'Built with GLM Code Studio ⚡' })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || r.status);
+    toast('Repo created: ' + d.full_name + ' ✅','ok');
+    await loadRepos();
+    $('ghRepoSel').value = d.full_name;
+  } catch(e){ toast('Create failed: ' + esc(e.message),'err'); }
+};
+
+$('btnPush').onclick = async () => {
+  if (!gh) return;
+  const code = $('code').value;
+  if (!code.trim()) return toast('Nothing to push — build something first.','err');
+  const repo = $('ghRepoSel').value;
+  const file = ($('ghFile').value.trim() || 'index.html').replace(/^\/+/, '');
+  const branch = $('ghBranch').value.trim() || 'main';
+  const message = $('ghCommit').value.trim() || 'Update ' + file;
+  if (!repo || repo === 'failed to load' || repo === '(no repos)') return toast('Pick or create a repository first','err');
+  $('pushResult').innerHTML = '<span style="color:var(--dim)">pushing…</span>';
+  try {
+    // get existing file sha (if any) to update instead of create
+    let sha = null;
+    const head = await fetch(`${GH_API}/repos/${repo}/contents/${encodeURIComponent(file)}?ref=${encodeURIComponent(branch)}`, { headers: ghHeaders() });
+    if (head.ok){ sha = (await head.json()).sha; }
+    const r = await fetch(`${GH_API}/repos/${repo}/contents/${encodeURIComponent(file)}`, {
+      method:'PUT', headers: ghHeaders(),
+      body: JSON.stringify({ message, content: btoa(unescape(encodeURIComponent(code))), branch, sha })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || r.status);
+    const me = 'https://github.com/' + repo;
+    $('pushResult').innerHTML = `<span style="color:var(--ok)">✅ pushed</span> · <a class="link" href="${me}" target="_blank" rel="noopener">open repo ↗</a>`;
+    toast('Pushed ' + file + ' to ' + repo + ' ✅','ok');
+  } catch(e){
+    $('pushResult').innerHTML = '<span style="color:var(--err)">❌ ' + esc(e.message) + '</span>';
+    toast('Push failed: ' + esc(e.message),'err');
+  }
+};
+
+$('btnPages').onclick = () => {
+  const repo = $('ghRepoSel').value;
+  if (!repo || repo === 'failed to load') return toast('Pick a repository first','err');
+  const [owner, name] = repo.split('/');
+  window.open(`https://github.com/${owner}/${name}/settings/pages`, '_blank');
+};
+
+/* =============== keyboard shortcuts =============== */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){ document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open')); }
+  if ((e.ctrlKey||e.metaKey) && e.key === '.'){ e.preventDefault(); openOverlay('settingsOverlay'); }
+});
+
+/* =============== init =============== */
+(function init(){
+  fillModels();
+  setBusy(false);
+  renderHistory();
+  if (!localStorage.getItem(LS.key) && !localStorage.getItem('glmcs_seen')){
+    localStorage.setItem('glmcs_seen','1');
+    setTimeout(() => { openOverlay('settingsOverlay'); toast('👋 Welcome! Add your API key to start building.'); }, 400);
+  }
+})();
+</script>
+</body>
+</html>
